@@ -2,28 +2,63 @@ const sendBtn = document.getElementById('send');
 const promptEl = document.getElementById('prompt');
 const output = document.getElementById('output');
 
-// Replace with your Worker URL after deployment
+// Replace with your Worker URL after deployment (no trailing slash required)
 const WORKER_URL = 'https://wild-dream-a536.mnbossa.workers.dev';
+
+async function sendPrompt(prompt) {
+  const endpoint = new URL('/chat', WORKER_URL).toString();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000); // 30s timeout
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    // Non-2xx: prefer readable text
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => `HTTP ${resp.status}`);
+      return { ok: false, error: text, status: resp.status };
+    }
+
+    // Try JSON, but gracefully fallback to text
+    try {
+      const data = await resp.json();
+      return { ok: true, data };
+    } catch {
+      const text = await resp.text().catch(() => '');
+      return { ok: true, data: { reply: text } };
+    }
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') return { ok: false, error: 'Request timed out' };
+    return { ok: false, error: err.message || 'Network error' };
+  }
+}
 
 sendBtn.addEventListener('click', async () => {
   const prompt = promptEl.value.trim();
   if (!prompt) return;
+  sendBtn.disabled = true;
   output.textContent = 'Waiting for response...';
-  try {
-    const resp = await fetch(WORKER_URL + '/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-    if (!resp.ok) {
-      const txt = await resp.text();
-      output.textContent = 'Error: ' + txt;
-      return;
-    }
-    const data = await resp.json();
-    output.textContent = data.reply ?? 'No reply';
-  } catch (err) {
-    output.textContent = 'Network error: ' + err.message;
+
+  const result = await sendPrompt(prompt);
+
+  sendBtn.disabled = false;
+
+  if (!result.ok) {
+    output.textContent = `Error: ${result.error} ${result.status ? `(status ${result.status})` : ''}`;
+    return;
   }
+
+  const reply = result.data?.reply ?? 'No reply';
+  output.textContent = reply;
 });
+
 
