@@ -3,7 +3,7 @@ const promptEl = document.getElementById('prompt');
 const output = document.getElementById('output');
 
 // Replace with your Worker URL after deployment
-const WORKER_URL = 'https://wild-dream-a536.mnbossa.workers.dev/';
+const WORKER_URL = 'https://wild-dream-a536.mnbossa.workers.dev';
 
 sendBtn.addEventListener('click', async () => {
   const prompt = promptEl.value.trim();
