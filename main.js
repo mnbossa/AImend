@@ -8,6 +8,8 @@ const WORKER_URL = 'https://wild-dream-a536.mnbossa.workers.dev';
 // The exact HF model ID you tested
 const MODEL_ID = 'HuggingFaceTB/SmolLM3-3B:hf-inference';
 
+// Conversation history
+const chatHistory = [];
 
 async function sendPrompt(prompt) {
 //const endpoint = new URL('/chat', WORKER_URL).toString();
@@ -16,13 +18,20 @@ async function sendPrompt(prompt) {
   const timeout = setTimeout(() => controller.abort(), 30_000); // 30s timeout
 
   // Build the chat-completions payload
+  chatHistory.push({ role: 'user', content: prompt });
+
   const body = {
     model: MODEL_ID,
-    messages: [
-      { role: 'user', content: prompt }
-    ],
+    messages: chatHistory,
     stream: false
   };
+//  const body = {
+//    model: MODEL_ID,
+//    messages: [
+//      { role: 'user', content: prompt }
+//    ],
+//    stream: false
+//  };
   console.log('→ /chat body', body);
   try {
     const resp = await fetch(endpoint, {
@@ -52,6 +61,10 @@ async function sendPrompt(prompt) {
       data = { reply: text };
     }
 
+    // Push the assistant's reply into history
+    if (data.reply) {
+      chatHistory.push({ role: 'assistant', content: data.reply });
+    }
     return { ok: true, data };
 
     // Try JSON, but gracefully fallback to text
