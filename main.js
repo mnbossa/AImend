@@ -5,17 +5,30 @@ const output = document.getElementById('output');
 // Replace with your Worker URL after deployment (no trailing slash required)
 const WORKER_URL = 'https://wild-dream-a536.mnbossa.workers.dev';
 
-async function sendPrompt(prompt) {
-  const endpoint = new URL('/chat', WORKER_URL).toString();
+// The exact HF model ID you tested
+const MODEL_ID = 'HuggingFaceTB/SmolLM3-3B:hf-inference';
 
+
+async function sendPrompt(prompt) {
+//const endpoint = new URL('/chat', WORKER_URL).toString();
+  const endpoint = `${WORKER_URL}/chat`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000); // 30s timeout
+
+  // Build the chat-completions payload
+  const body = {
+    model: MODEL_ID,
+    messages: [
+      { role: 'user', content: prompt }
+    ],
+    stream: false
+  };
 
   try {
     const resp = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ body }),
       signal: controller.signal
     });
 
@@ -57,8 +70,9 @@ sendBtn.addEventListener('click', async () => {
     return;
   }
 
-  const reply = result.data?.reply ?? 'No reply';
-  output.textContent = reply;
+//const reply = result.data?.reply ?? 'No reply';
+//output.textContent = reply;
+  output.textContent = result.data.reply || 'No reply';
 });
 
 
