@@ -36,8 +36,12 @@ async function sendPrompt(prompt) {
 
     // Non-2xx: prefer readable text
     if (!resp.ok) {
-      const text = await resp.text().catch(() => `HTTP ${resp.status}`);
-      return { ok: false, error: text, status: resp.status };
+      const errorBody = await resp.text().catch(()=>'');
+      console.error('Worker /chat error', resp.status, errorBody);
+      return { ok: false, error: errorBody || `HTTP ${resp.status}`, status: resp.status };
+      // const text = await resp.text().catch(() => `HTTP ${resp.status}`);
+      // return { ok: false, error: text, status: resp.status };
+
     }
 
     let data;
