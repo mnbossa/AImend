@@ -23,12 +23,12 @@ async function sendPrompt(prompt) {
     ],
     stream: false
   };
-
+  console.log('→ /chat body', body);
   try {
     const resp = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body }),
+      body: JSON.stringify( body ),
       signal: controller.signal
     });
 
