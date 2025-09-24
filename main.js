@@ -40,14 +40,24 @@ async function sendPrompt(prompt) {
       return { ok: false, error: text, status: resp.status };
     }
 
-    // Try JSON, but gracefully fallback to text
+    let data;
     try {
-      const data = await resp.json();
-      return { ok: true, data };
+      data = await resp.json();
     } catch {
       const text = await resp.text().catch(() => '');
-      return { ok: true, data: { reply: text } };
+      data = { reply: text };
     }
+
+    return { ok: true, data };
+
+    // Try JSON, but gracefully fallback to text
+//    try {
+//      const data = await resp.json();
+//      return { ok: true, data };
+//    } catch {
+//      const text = await resp.text().catch(() => '');
+//      return { ok: true, data: { reply: text } };
+//    }
   } catch (err) {
     clearTimeout(timeout);
     if (err.name === 'AbortError') return { ok: false, error: 'Request timed out' };
