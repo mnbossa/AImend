@@ -1,0 +1,10 @@
+fastapi==0.95.2
+uvicorn==0.22.0
+httpx==0.24.1
+beautifulsoup4==4.12.2
+aiofiles==23.1.0
+pydantic==1.10.11
+requests==2.31.0
+sqlalchemy==2.1.1
+databases==0.6.0
+python-multipart==0.0.6
