@@ -1,5 +1,8 @@
 HF_token.txt
 HF_tokenV.txt
+testWorker2.txt
+testWorker1.txt
+Shared_Secret.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
