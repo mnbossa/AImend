@@ -1,17 +1,64 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
+# api/main.py
+import importlib
+import json
+from typing import Callable
 
-# REQUIRED: top-level ASGI app variable named exactly `app`
-app = FastAPI(title="AImend API")
+# Minimal ASGI app that does NOT import fastapi at module import time.
+# Vercel will detect this ASGI callable and run the Python builder.
+async def app(scope, receive, send):
+    if scope["type"] != "http":
+        await send({"type": "http.response.start", "status": 404, "headers": [(b"content-type", b"text/plain")]})
+        await send({"type": "http.response.body", "body": b"Not found"})
+        return
 
-@app.post("/api/chat")
-async def chat_endpoint(payload: dict):
-    # Example minimal behavior to verify deployment
-    q = payload.get("q")
-    if not q:
-        raise HTTPException(status_code=400, detail="missing q")
-    return JSONResponse({"q": q, "answer": "placeholder - deployment OK"})
+    method = scope.get("method", "").upper()
+    path = scope.get("path", "")
 
+    # Only support /api/chat POST for now
+    if method == "POST" and path == "/api/chat":
+        # Read body
+        body = b""
+        more_body = True
+        while more_body:
+            msg = await receive()
+            if msg["type"] == "http.request":
+                body += msg.get("body", b"")
+                more_body = msg.get("more_body", False)
+            else:
+                more_body = False
+
+        # Parse JSON safely
+        try:
+            payload = json.loads(body.decode("utf-8") or "{}")
+        except Exception:
+            await send({"type": "http.response.start", "status": 400, "headers": [(b"content-type", b"application/json")]})
+            await send({"type": "http.response.body", "body": b'{"error":"invalid JSON"}'})
+            return
+
+        # Lazy import the real handler that uses FastAPI and other deps
+        try:
+            handler_mod = importlib.import_module("handler")  # expects handler.py in repo root or package
+            result = await handler_mod.handle_chat(payload)
+            body_out = json.dumps(result).encode("utf-8")
+            await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json")]})
+            await send({"type": "http.response.body", "body": body_out})
+            return
+        except ModuleNotFoundError:
+            # If handler not present, return a minimal confirmation
+            res = {"q": payload.get("q"), "answer": "deployment OK but handler not found"}
+            await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json")]})
+            await send({"type": "http.response.body", "body": json.dumps(res).encode("utf-8")})
+            return
+        except Exception as e:
+            # If real handler raises, surface a 500 with message
+            err = {"error": "handler error", "detail": str(e)}
+            await send({"type": "http.response.start", "status": 500, "headers": [(b"content-type", b"application/json")]})
+            await send({"type": "http.response.body", "body": json.dumps(err).encode("utf-8")})
+            return
+
+    # Default: 404
+    await send({"type": "http.response.start", "status": 404, "headers": [(b"content-type", b"text/plain")]})
+    await send({"type": "http.response.body", "body": b"Not found"})
 
 
 # import os
